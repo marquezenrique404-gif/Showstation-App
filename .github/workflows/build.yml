@@ -1,4 +1,4 @@
-name: Compilacion Showstation Final
+name: Compilacion Showstation Real
 
 on:
   workflow_dispatch:
@@ -25,31 +25,38 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential ccache git libffi-dev libssl-dev python3-dev unzip zip libltdl-dev
 
-    - name: Instalar Buildozer Estables
+    - name: Instalar Buildozer de Desarrollo (Soluciona el bug de licencias)
       run: |
-        pip3 install --user --upgrade "buildozer==1.5.0" "cython<3.0.0" virtualenv
+        # Instalamos la version mas nueva desde el codigo fuente original para corregir las rutas de Android
+        pip3 install --user --upgrade git+https://github.com/kivy/buildozer.git@master
+        pip3 install --user --upgrade "cython<3.0.0" virtualenv
 
-    - name: Configurar Buildozer Automático
+    - name: Inicializar y Configurar Buildozer .spec
       run: |
         ~/.local/bin/buildozer init
-        # Configuramos la app para que use la API 33 nativa
         sed -i 's/#android.build_tools_version =/android.build_tools_version = 33.0.2/g' buildozer.spec
         sed -i 's/#android.api = 33/android.api = 33/g' buildozer.spec
         sed -i 's/source.include_exts = py,png,jpg,kv,atlas/source.include_exts = py,png,jpg,kv,atlas,mp3,mp4,avi,mkv/g' buildozer.spec
-        sed -i 's/requirements = python3, kivy/requirements = python3==3.11.5, kivy/g' buildozer.spec
-        
-    - name: Compilar APK (Aceptando todo por contrato)
+        sed -i 's/requirements = python3, kivy/requirements = python3==3.11.5, kivy, ffpyplayer/g' buildozer.spec
+        sed -i 's/#android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
+
+    - name: Forzar Aceptacion de Licencias Android SDK
+      run: |
+        # Descargamos el motor de licencias oficial y firmamos todo de golpe en el sistema
+        mkdir -p ~/.android || true
+        touch ~/.android/repositories.cfg || true
+        export ANDROID_HOME=/home/runner/.buildozer/android/platform/android-sdk
+        mkdir -p $ANDROID_HOME/cmdline-tools/latest/bin || true
+        yes | ~/.local/bin/buildozer android sdk_update || true
+
+    - name: Compilar APK Nivel Sistema
       env:
         BUILDOZER_WARN_ON_ROOT: 0
         PLAY_STORE_BUILD: 0
       run: |
         export PATH=$PATH:~/.local/bin
-        # Este comando le pasa de forma automatizada la letra "y" a cada pregunta del SDK de Android
-        expect -c "
-        spawn buildozer android debug
-        expect \"Accept? (y/N):\" { send \"y\r\"; exp_continue }
-        expect eof
-        " || buildozer android debug
+        # Compilamos directo con la bandera de aceptacion automatica nativa
+        buildozer android debug
 
     - name: Guardar Archivo Final (APK)
       uses: actions/upload-artifact@v4
