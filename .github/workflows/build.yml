@@ -5,7 +5,7 @@ on:
 
 jobs:
   android:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04 # Forzamos una version ultra estable y compatible
 
     steps:
     - name: Descargar repositorio
@@ -20,36 +20,41 @@ jobs:
         distribution: 'zulu'
         java-version: '17'
 
-    - name: Instalar Dependencias
+    - name: Instalar Dependencias del Sistema
       run: |
-        pip3 install --user --upgrade buildozer cython virtualenv
         sudo apt-get update
-        sudo apt-get install -y \
-          build-essential \
-          ccache \
-          git \
-          libffi-dev \
-          libssl-dev \
-          python3-dev \
-          unzip \
-          zip
+        sudo apt-get install -y build-essential ccache git libffi-dev libssl-dev python3-dev unzip zip libltdl-dev
 
-    - name: Configurar Buildozer
+    - name: Instalar Buildozer y Cython
       run: |
-        echo "y" | ~/.local/bin/buildozer init
+        pip3 install --user --upgrade "buildozer==1.5.0" "cython<3.0.0" virtualenv
+
+    - name: Aceptar Licencias de Android por Adelantado
+      run: |
+        mkdir -p ~/.android
+        touch ~/.android/repositories.cfg
+        # Autoinyectamos la aprobacion de licencias para que Buildozer no pregunte nada
+        mkdir -p ~/.buildozer/android/platform/android-sdk/licenses || true
+        echo "247a1c6d50f84b38a63412d2b1fbb09779201d9a" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license || true
+
+    - name: Configurar Buildozer .spec
+      run: |
+        ~/.local/bin/buildozer init
         sed -i 's/#android.build_tools_version =/android.build_tools_version = 34.0.0/g' buildozer.spec
         sed -i 's/#android.api = 33/android.api = 34/g' buildozer.spec
         sed -i 's/source.include_exts = py,png,jpg,kv,atlas/source.include_exts = py,png,jpg,kv,atlas,mp3,mp4,avi,mkv/g' buildozer.spec
         sed -i 's/requirements = python3, kivy/requirements = python3==3.11.5, kivy/g' buildozer.spec
 
-    - name: Compilar APK sin cortes
+    - name: Compilar APK en modo silencioso
       env:
         BUILDOZER_WARN_ON_ROOT: 0
+        PLAY_STORE_BUILD: 0
       run: |
         export PATH=$PATH:~/.local/bin
-        yes | buildozer android debug
-        
-    - name: Guardar Archivo Final
+        # Corremos buildozer de forma directa y nativa sin pipes infinitos
+        buildozer android debug
+
+    - name: Guardar Archivo Final (APK)
       uses: actions/upload-artifact@v4
       with:
         name: Showstation-APK-Enrique
