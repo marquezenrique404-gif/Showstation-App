@@ -24,7 +24,15 @@ jobs:
       run: |
         pip3 install --user --upgrade buildozer cython virtualenv
         sudo apt-get update
-        sudo apt-get install -y build-essential ccache git libffi-dev libssl-dev python3-dev unzip zip Alt
+        sudo apt-get install -y \
+          build-essential \
+          ccache \
+          git \
+          libffi-dev \
+          libssl-dev \
+          python3-dev \
+          unzip \
+          zip
 
     - name: Configurar Buildozer
       run: |
