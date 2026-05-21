@@ -1,8 +1,52 @@
-- name: Compilar APK en modo silencioso
+name: Build APK Automatica
+
+on:
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Descargar repositorio
+      uses: actions/checkout@v4
+
+    - name: Desempaquetar proyecto
+      run: unzip -o showstation.zip -d . || true
+
+    - name: Configurar Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
+    - name: Instalar Dependencias del Sistema
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential ccache git libffi-dev libssl-dev python3-dev unzip zip libltdl-dev
+
+    - name: Instalar Buildozer y Cython Estables
+      run: |
+        pip3 install --user --upgrade "buildozer==1.5.0" "cython<3.0.0" virtualenv
+
+    - name: Configurar Buildozer Estabilidad Total (API 33)
+      run: |
+        ~/.local/bin/buildozer init
+        sed -i 's/#android.build_tools_version =/android.build_tools_version = 33.0.0/g' buildozer.spec
+        sed -i 's/#android.api = 33/android.api = 33/g' buildozer.spec
+        sed -i 's/source.include_exts = py,png,jpg,kv,atlas/source.include_exts = py,png,jpg,kv,atlas,mp3,mp4,avi,mkv/g' buildozer.spec
+        sed -i 's/requirements = python3, kivy/requirements = python3==3.11.5, kivy/g' buildozer.spec
+
+    - name: Compilar APK sin limites
       env:
         BUILDOZER_WARN_ON_ROOT: 0
         PLAY_STORE_BUILD: 0
       run: |
         export PATH=$PATH:~/.local/bin
-        # Le agregamos la bandera de silencio total para que no sature la pantalla
-        buildozer android debug quiet
+        buildozer android debug
+
+    - name: Guardar Archivo Final (APK)
+      uses: actions/upload-artifact@v4
+      with:
+        name: Showstation-APK-Enrique
+        path: bin/*.apk
