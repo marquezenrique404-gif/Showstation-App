@@ -29,6 +29,17 @@ jobs:
       run: |
         pip3 install --user --upgrade "buildozer==1.5.0" "cython<3.0.0" virtualenv
 
+    - name: Forzar Aceptacion Total de Licencias Google
+      run: |
+        # 1. Creamos las carpetas de licencias del SDK en la raiz del servidor
+        mkdir -p ~/.android || true
+        touch ~/.android/repositories.cfg || true
+        mkdir -p /home/runner/.buildozer/android/platform/android-sdk/licenses || true
+        
+        # 2. Inyectamos la firma digital aprobada para CUALQUIER herramienta de Android (incluyendo la version 37)
+        echo -e "\n247a1c6d50f84b38a63412d2b1fbb09779201d9a\n28a63412d2b1fbb09779201d9a" > /home/runner/.buildozer/android/platform/android-sdk/licenses/android-sdk-license || true
+        echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > /home/runner/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license || true
+
     - name: Configurar Buildozer Estabilidad Total
       run: |
         ~/.local/bin/buildozer init
@@ -44,7 +55,8 @@ jobs:
         PLAY_STORE_BUILD: 0
       run: |
         export PATH=$PATH:~/.local/bin
-        buildozer android debug
+        # Usamos el comando "yes" directo sobre el ejecutable para firmar cualquier rastro suelto
+        yes | buildozer android debug
 
     - name: Guardar Archivo Final (APK)
       uses: actions/upload-artifact@v4
