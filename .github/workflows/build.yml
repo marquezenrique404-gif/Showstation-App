@@ -1,0 +1,44 @@
+name: Build APK Automatica
+
+on:
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Descargar repositorio
+      uses: actions/checkout@v3
+
+    - name: Desempaquetar proyecto
+      run: unzip -o showstation.zip -d . || true
+
+    - name: Configurar Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
+    - name: Instalar Dependencias
+      run: |
+        pip3 install --user --upgrade buildozer cython virtualenv
+        sudo apt-get update
+        sudo apt-get install -y build-essential ccache git libffi-dev libssl-dev python3-dev unzip zip
+
+    - name: Configurar Buildozer
+      run: |
+        echo "y" | ~/.local/bin/buildozer init
+        sed -i 's/#android.build_tools_version =/android.build_tools_version = 34.0.0/g' buildozer.spec
+        sed -i 's/#android.api = 33/android.api = 34/g' buildozer.spec
+        sed -i 's/source.include_exts = py,png,jpg,kv,atlas/source.include_exts = py,png,jpg,kv,atlas,mp3,mp4,avi,mkv/g' buildozer.spec
+        sed -i 's/requirements = python3, kivy/requirements = python3==3.11.5, kivy/g' buildozer.spec
+
+    - name: Compilar APK sin cortes
+      run: yes | ~/.local/bin/buildozer android debug
+
+    - name: Guardar Archivo Final
+      uses: actions/upload-artifact@v4
+      with:
+        name: Showstation-APK-Enrique
+        path: bin/*.apk
