@@ -5,7 +5,7 @@ on:
 
 jobs:
   android:
-    runs-on: ubuntu-22.04 # Forzamos una version ultra estable y compatible
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Descargar repositorio
@@ -29,13 +29,22 @@ jobs:
       run: |
         pip3 install --user --upgrade "buildozer==1.5.0" "cython<3.0.0" virtualenv
 
+    - name: Preinstalar Herramientas de Android SDK (sdkmanager)
+      run: |
+        mkdir -p ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin || true
+        # Descargamos directamente las herramientas oficiales para que no marque ausencia
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline.zip
+        unzip -q cmdline.zip
+        mv cmdline-tools/* ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/ || true
+        rm -rf cmdline-tools cmdline.zip
+
     - name: Aceptar Licencias de Android por Adelantado
       run: |
         mkdir -p ~/.android
         touch ~/.android/repositories.cfg
-        # Autoinyectamos la aprobacion de licencias para que Buildozer no pregunte nada
         mkdir -p ~/.buildozer/android/platform/android-sdk/licenses || true
         echo "247a1c6d50f84b38a63412d2b1fbb09779201d9a" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license || true
+        echo "84831b9409646a918e30573bab4c9c91346d8abd" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license || true
 
     - name: Configurar Buildozer .spec
       run: |
@@ -51,7 +60,6 @@ jobs:
         PLAY_STORE_BUILD: 0
       run: |
         export PATH=$PATH:~/.local/bin
-        # Corremos buildozer de forma directa y nativa sin pipes infinitos
         buildozer android debug
 
     - name: Guardar Archivo Final (APK)
